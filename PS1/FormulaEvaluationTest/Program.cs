@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FormulaEvaluator;
 
-namespace FormulaEvaluator
+namespace FormulaEvaluationTest
 {
-    public class Class1
+    class Program
     {
-        //this is a test
+        static void Main(string[] args)
+        {
+        }
     }
 }
