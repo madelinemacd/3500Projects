@@ -18,7 +18,19 @@ namespace FormulaEvaluationTest
         /// <param name="args">Arguments from the command line</param>
         static void Main(string[] args)
         {
-            Evaluator.Evaluate("4 + 2 * 6 / 3 - 2", VarTest);
+            try
+            {
+                Console.WriteLine(Evaluator.Evaluate("10 / (6 / 3) / 2", VarTest));
+                Console.WriteLine(Evaluator.Evaluate("4/2", VarTest));
+                Console.WriteLine(Evaluator.Evaluate("0/2", VarTest));
+                Console.WriteLine(Evaluator.Evaluate("A5+3", VarTest));
+                Console.WriteLine(Evaluator.Evaluate("6*B6", VarTest)); 
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            Console.ReadLine();
         }
 
         /// <summary>
@@ -28,7 +40,16 @@ namespace FormulaEvaluationTest
         /// <returns>The integer value of the variable</returns>
         private static int VarTest(string v)
         {
-            return -1;
+            Dictionary<string, int> variables = new Dictionary<string, int>();
+            variables.Add("A5", 2);
+            variables.Add("B6", 1);
+            variables.Add("B7", 0);
+            int value;
+            if (!variables.TryGetValue(v, out value))
+            {
+                throw new Exception("Invalid Variable");
+            }
+            return value;
         }
     }
 }

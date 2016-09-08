@@ -35,16 +35,21 @@ namespace FormulaEvaluator
             foreach(string token in tokens)
             {
                 //I have previous experiences with regex stuff, so I promise I wrote this one myself :)
-                if (Regex.Match(token, @"^[//+//\-//*///]$").Success)
+                if (Regex.Match(token, @"^[+\-//*///]$").Success)
                 {
-
-                    if (Regex.Match(token, @"^[//+//\-]$").Success)
+                    //evaluate addition and subtraction
+                    if (token.Equals("+") || token.Equals("-"))
                     {
-                        if (Regex.Match(operators.Peek(), @"^[//+//\-]$").Success && values.Count >= 2)
+                        if (operators.Count >= 1 && values.Count >= 2)
                         {
-                            values.Push(
-                                operators.Pop().PerformOperation(
-                                    values.Pop(), values.Pop()));
+                            if (operators.Peek().Equals("+") || operators.Peek().Equals("-"))
+                            {
+                                int val1 = values.Pop();
+                                int val2 = values.Pop();
+                                values.Push(
+                                    operators.Pop().PerformOperation(
+                                        val2, val1));
+                            }
                         }
                         operators.Push(token);
                     }
@@ -53,77 +58,104 @@ namespace FormulaEvaluator
                         operators.Push(token);
                     }
                 }
+                
+                //opening parenthesis
                 else if (token.Equals("("))
                 {
                     operators.Push(token);
                 }
+
+                //logic for finishing up parenthesis
                 else if(token.Equals(")"))
                 {
-                    if (Regex.Match(operators.Peek(), @"^[//+//\-]$").Success && values.Count >= 2)
+                    //final operations inside the parenthesis
+                    if (operators.Count >= 1 && values.Count >= 2)
                     {
-                        values.Push(
-                            operators.Pop().PerformOperation(
-                                values.Pop(), values.Pop()));
+                        if (operators.Peek().Equals("+") || operators.Peek().Equals("-"))
+                        {
+                            int val1 = values.Pop();
+                            int val2 = values.Pop();
+                            values.Push(
+                                operators.Pop().PerformOperation(
+                                    val2, val1));
+                        }
                     }
 
                     if (!operators.Pop().Equals("(")) { throw new Exception("Invalid Expression"); }
 
-                    if (operators.Peek().Equals("*") || operators.Peek().Equals("/"))
+                    //if there's a multiply or divide right before the parenthesis
+                    if (operators.Count >= 1)
                     {
-                        if (values.Count >= 2 && operators.Count >= 2)
+                        if (operators.Peek().Equals("*") || operators.Peek().Equals("/"))
                         {
-                            values.Push(operators.Pop().PerformOperation(values.Pop(), values.Pop()));
-                        }
-                        else
-                        {
-                            //throw an exception here? 
+                            if (values.Count >= 2)
+                            {
+                                int val1 = values.Pop();
+                                int val2 = values.Pop();
+                                values.Push(operators.Pop().PerformOperation(val2, val1));
+                            }
+                            else
+                            {
+                                throw new Exception("Invalid Expression");
+                            }
                         }
                     }
 
                 }
-                else
+
+                //At this point we either have a variable or an integer, or some other invalid character
+                else if (!String.IsNullOrWhiteSpace(token))
                 {
+                    //should guarantee a value for operand, or a thrown exception within the delegate
                     int operand;
                     if (!int.TryParse(token, out operand))
                     {
                         operand = variableEvaluator(token);
                     }
-                    if (operators.Peek().Equals("*") || operators.Peek().Equals("/"))
+
+                    //perform multiplication or division
+                    if (operators.Count >= 1)
                     {
-                        if (values.Count >= 1 && operators.Count >= 1)
+                        if (operators.Peek().Equals("*") || operators.Peek().Equals("/"))
                         {
-                            values.Push(operators.Pop().PerformOperation(values.Pop(), operand));
+                            if (values.Count >= 1 && operators.Count >= 1)
+                            {
+                                values.Push(operators.Pop().PerformOperation(values.Pop(), operand));
+                            }
+                            else
+                            {
+                                throw new Exception("Invalid Expression"); 
+                            }
                         }
-                        else
-                        {
-                            //throw an exception here? 
-                        }
+                        else { values.Push(operand); } 
                     }
-                    else
-                    {
-                        values.Push(operand);
-                    }
+                    //should only be reached if the stack is empty, this is the first number
+                    else { values.Push(operand); }
                 }
             }
 
-            //start by parsing the string into tokens
-            //then look through tokens and evaluate for correctness
-            //no need to go through twice
-            //init two stacks
-            //iterate through each token
-            //check each token for what type it is (switch statement?)
-            //evaluate all variables as we go?
-            // TODO...
+            //final operations once all tokens are processed
+            if (operators.Count == 0 && values.Count == 1)
+            {
+                return values.Pop();
+            }
+            else if (operators.Count >= 1 && values.Count >= 2)
+            {
+                if (operators.Peek().Equals("+") || operators.Peek().Equals("-"))
+                {
+                    int val1 = values.Pop();
+                    int val2 = values.Pop();
+                    return operators.Pop().PerformOperation(val2, val1);
+                }
+            }
+            else
+            {
+                throw new Exception("Invalid Expression");
+            }
+            //should never get here
             return -1;
         }
     }
-
-
-
-    //I got this idea off of stack overflow
-    //http://stackoverflow.com/questions/7086058/convert-string-value-to-operator-in-c-sharp
-    //I definitely am capable of doing this as a seperate method, but I wanted to 
-    //practice extensions and make my algorithm prettier
 
     /// <summary>
     /// Extends the String class to allow for more elegant arithmetic operations
@@ -131,7 +163,7 @@ namespace FormulaEvaluator
     public static class Extension
     {
         /// <summary>
-        /// 
+        /// Performs addition, subtraction, multiplication and division on two integers
         /// </summary>
         /// <param name="token">An arithmetic operator</param>
         /// <param name="x">operand</param>
@@ -139,13 +171,20 @@ namespace FormulaEvaluator
         /// <returns>The result of the operation</returns>
         public static int PerformOperation(this string token, int x, int y)
         {
-            switch (token)
+            try
             {
-                case "*": return x * y;
-                case "/": return x / y;
-                case "+": return x + y;
-                case "-": return x - y;
-                default: throw new Exception("Token not a recognized operator");
+                switch (token)
+                {
+                    case "*": return x * y;
+                    case "/": return x / y;
+                    case "+": return x + y;
+                    case "-": return x - y;
+                    default: throw new Exception("Token not a recognized operator");
+                }
+            }
+            catch (DivideByZeroException)
+            {
+                throw new Exception("Invalid Operation: Divide by Zero");
             }
         }
     }
